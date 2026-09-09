@@ -29,9 +29,15 @@ const DASHSCOPE_VIDEO_MODEL = process.env.DASHSCOPE_VIDEO_MODEL ?? 'MiniMax/Mini
 const DASHSCOPE_REGION = process.env.DASHSCOPE_REGION ?? 'beijing'
 const DASHSCOPE_WORKSPACE_ID = process.env.DASHSCOPE_WORKSPACE_ID
 const VIDEO_REGION = DASHSCOPE_REGION.startsWith('cn-') ? DASHSCOPE_REGION : `cn-${DASHSCOPE_REGION}`
-const DASHSCOPE_VIDEO_BASE_URL = (process.env.DASHSCOPE_VIDEO_BASE_URL ?? (
-  DASHSCOPE_WORKSPACE_ID ? `https://${DASHSCOPE_WORKSPACE_ID}.${VIDEO_REGION}.maas.aliyuncs.com` : ''
-)).replace(/\/$/, '')
+const DASHSCOPE_WORKSPACE_BASE_URL = DASHSCOPE_WORKSPACE_ID
+  ? `https://${DASHSCOPE_WORKSPACE_ID}.${VIDEO_REGION}.maas.aliyuncs.com`
+  : ''
+const DASHSCOPE_IMAGE_BASE_URL = (
+  process.env.DASHSCOPE_IMAGE_BASE_URL ?? (DASHSCOPE_WORKSPACE_BASE_URL || DASHSCOPE_BASE_URL)
+).replace(/\/$/, '')
+const DASHSCOPE_VIDEO_BASE_URL = (
+  process.env.DASHSCOPE_VIDEO_BASE_URL ?? DASHSCOPE_WORKSPACE_BASE_URL
+).replace(/\/$/, '')
 const DIST_DIR = path.resolve(process.cwd(), process.env.DIST_DIR ?? 'dist-vite')
 const HOST = process.env.HOST ?? (process.env.PORT ? '0.0.0.0' : '127.0.0.1')
 
@@ -239,7 +245,7 @@ async function requestDashscopeImage(prompt, size) {
     throw new Error('未配置 DASHSCOPE_API_KEY。请在 .env.local 中填写通义万相 API key。')
   }
 
-  const upstream = await fetch(`${DASHSCOPE_BASE_URL}/api/v1/services/aigc/multimodal-generation/generation`, {
+  const upstream = await fetch(`${DASHSCOPE_IMAGE_BASE_URL}/api/v1/services/aigc/multimodal-generation/generation`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${DASHSCOPE_API_KEY}`,
