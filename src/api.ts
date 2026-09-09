@@ -114,7 +114,7 @@ async function generateImageTask(path: string, body: unknown, fallback: string):
 
   if (payload.imageUrl) return payload.imageUrl
 
-  for (let attempt = 0; attempt < 36; attempt += 1) {
+  for (let attempt = 0; attempt < 72; attempt += 1) {
     await new Promise((resolve) => window.setTimeout(resolve, 5_000))
     const statusResponse = await fetch(
       `/api/image-task-status?taskId=${encodeURIComponent(payload.taskId)}`,

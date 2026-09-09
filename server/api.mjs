@@ -267,6 +267,8 @@ async function requestDashscopeImage(prompt, size) {
         size,
         n: 1,
         prompt_extend: true,
+        prompt_extend_mode: 'direct',
+        enable_thinking: false,
         watermark: false,
       },
     }),
