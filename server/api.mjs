@@ -244,12 +244,16 @@ async function requestDashscopeImage(prompt, size) {
   if (!DASHSCOPE_API_KEY) {
     throw new Error('未配置 DASHSCOPE_API_KEY。请在 .env.local 中填写通义万相 API key。')
   }
+  if (!DASHSCOPE_WORKSPACE_ID && !process.env.DASHSCOPE_IMAGE_BASE_URL) {
+    throw new Error('未配置 DASHSCOPE_WORKSPACE_ID。qwen-image-3.0-pro 图片任务需要业务空间 ID。')
+  }
 
-  const upstream = await fetch(`${DASHSCOPE_IMAGE_BASE_URL}/api/v1/services/aigc/multimodal-generation/generation`, {
+  const upstream = await fetch(`${DASHSCOPE_IMAGE_BASE_URL}/api/v1/services/aigc/image-generation/generation`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${DASHSCOPE_API_KEY}`,
       'Content-Type': 'application/json',
+      'X-DashScope-Async': 'enable',
     },
     body: JSON.stringify({
       model: DASHSCOPE_IMAGE_MODEL,
@@ -274,9 +278,12 @@ async function requestDashscopeImage(prompt, size) {
     throw new Error(detail)
   }
 
-  const imageUrl = extractImageUrl(payload)
-  if (!imageUrl) throw new Error('通义万相没有返回图片地址，请检查模型和地域配置。')
-  return imageUrl
+  const taskId = payload?.output?.task_id
+  if (!taskId) throw new Error('通义万相没有返回图片任务 ID，请检查模型、Workspace 和地域配置。')
+  return {
+    taskId,
+    status: payload?.output?.task_status ?? 'PENDING',
+  }
 }
 
 async function generateCharacterImage(body) {
@@ -303,6 +310,32 @@ async function generateShotImage(body) {
   }
 
   return requestDashscopeImage(buildShotImagePrompt(body), '1152*2048')
+}
+
+async function getImageTaskStatus(taskId) {
+  if (!DASHSCOPE_API_KEY) {
+    throw new Error('未配置 DASHSCOPE_API_KEY。请在 .env.local 中填写通义万相 API key。')
+  }
+  if (!DASHSCOPE_WORKSPACE_ID && !process.env.DASHSCOPE_IMAGE_BASE_URL) {
+    throw new Error('未配置 DASHSCOPE_WORKSPACE_ID。qwen-image-3.0-pro 图片任务需要业务空间 ID。')
+  }
+
+  const upstream = await fetch(`${DASHSCOPE_IMAGE_BASE_URL}/api/v1/tasks/${encodeURIComponent(taskId)}`, {
+    headers: { Authorization: `Bearer ${DASHSCOPE_API_KEY}` },
+  })
+  const payload = await upstream.json()
+  if (!upstream.ok) {
+    const detail = payload?.message ?? payload?.error?.message ?? `通义万相图片状态查询失败（HTTP ${upstream.status}）。`
+    throw new Error(detail)
+  }
+
+  const output = payload?.output ?? {}
+  return {
+    taskId,
+    status: output.task_status ?? 'UNKNOWN',
+    imageUrl: extractImageUrl(payload),
+    error: output.message ?? payload?.message ?? null,
+  }
 }
 
 async function createShotVideo(body) {
@@ -401,6 +434,21 @@ export async function handleRequest(req, res) {
     return
   }
 
+  if (req.method === 'GET' && requestUrl.pathname === '/api/image-task-status') {
+    const taskId = requestUrl.searchParams.get('taskId')
+    if (!taskId) {
+      sendJson(res, 400, { error: '缺少图片任务 ID。' })
+      return
+    }
+    try {
+      sendJson(res, 200, await getImageTaskStatus(taskId))
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '图片状态查询失败，请稍后重试。'
+      sendJson(res, 502, { error: message })
+    }
+    return
+  }
+
   if (!requestUrl.pathname.startsWith('/api/')) {
     serveStatic(requestUrl.pathname, res)
     return
@@ -413,8 +461,8 @@ export async function handleRequest(req, res) {
 
   if (requestUrl.pathname === '/api/generate-character-image') {
     try {
-      const imageUrl = await generateCharacterImage(await readBody(req))
-      sendJson(res, 200, { imageUrl })
+      const task = await generateCharacterImage(await readBody(req))
+      sendJson(res, 202, task)
     } catch (error) {
       const message = error instanceof Error ? error.message : '角色图片生成失败，请稍后重试。'
       sendJson(res, 502, { error: message })
@@ -424,8 +472,8 @@ export async function handleRequest(req, res) {
 
   if (requestUrl.pathname === '/api/generate-scene-image') {
     try {
-      const imageUrl = await generateSceneImage(await readBody(req))
-      sendJson(res, 200, { imageUrl })
+      const task = await generateSceneImage(await readBody(req))
+      sendJson(res, 202, task)
     } catch (error) {
       const message = error instanceof Error ? error.message : '场景母本生成失败，请稍后重试。'
       sendJson(res, 502, { error: message })
@@ -435,8 +483,8 @@ export async function handleRequest(req, res) {
 
   if (requestUrl.pathname === '/api/generate-shot-image') {
     try {
-      const imageUrl = await generateShotImage(await readBody(req))
-      sendJson(res, 200, { imageUrl })
+      const task = await generateShotImage(await readBody(req))
+      sendJson(res, 202, task)
     } catch (error) {
       const message = error instanceof Error ? error.message : '分镜画面生成失败，请稍后重试。'
       sendJson(res, 502, { error: message })

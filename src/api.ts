@@ -42,9 +42,11 @@ export async function generateProject(source: string): Promise<Project> {
   return payload.project
 }
 
-interface CharacterImageResponse {
-  imageUrl?: string
-  error?: string
+interface ImageTaskResponse {
+  taskId?: string
+  status?: string
+  imageUrl?: string | null
+  error?: string | null
 }
 
 interface ShotVideoResponse {
@@ -55,41 +57,29 @@ interface ShotVideoResponse {
 }
 
 export async function generateCharacterImage(character: Character, style: string): Promise<string> {
-  const response = await fetch('/api/generate-character-image', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
+  return generateImageTask(
+    '/api/generate-character-image',
+    {
       name: character.name,
       role: character.role,
       identity: character.identity,
       style,
       sheetLayout: 'front-avatar-back',
-    }),
-  })
-
-  const payload = await readJson<CharacterImageResponse>(response)
-  if (!response.ok || !payload.imageUrl) {
-    throw new Error(payload.error ?? '角色图片生成失败，请检查通义万相配置。')
-  }
-  return payload.imageUrl
+    },
+    '角色图片生成失败，请检查通义万相配置。',
+  )
 }
 
 export async function generateSceneImage(scene: Scene, style: string): Promise<string> {
-  const response = await fetch('/api/generate-scene-image', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
+  return generateImageTask(
+    '/api/generate-scene-image',
+    {
       name: scene.name,
       geometry: scene.geometry,
       style,
-    }),
-  })
-
-  const payload = await readJson<CharacterImageResponse>(response)
-  if (!response.ok || !payload.imageUrl) {
-    throw new Error(payload.error ?? '场景母本生成失败，请检查通义万相配置。')
-  }
-  return payload.imageUrl
+    },
+    '场景母本生成失败，请检查通义万相配置。',
+  )
 }
 
 export async function generateShotImage(
@@ -98,22 +88,50 @@ export async function generateShotImage(
   characters: Character[],
   style: string,
 ): Promise<string> {
-  const response = await fetch('/api/generate-shot-image', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
+  return generateImageTask(
+    '/api/generate-shot-image',
+    {
       shot,
       scene,
       characters,
       style,
-    }),
+    },
+    '分镜画面生成失败，请检查通义万相配置。',
+  )
+}
+
+async function generateImageTask(path: string, body: unknown, fallback: string): Promise<string> {
+  const response = await fetch(path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
   })
 
-  const payload = await readJson<CharacterImageResponse>(response)
-  if (!response.ok || !payload.imageUrl) {
-    throw new Error(payload.error ?? '分镜画面生成失败，请检查通义万相配置。')
+  const payload = await readJson<ImageTaskResponse>(response)
+  if (!response.ok || !payload.taskId) {
+    throw new Error(payload.error ?? fallback)
   }
-  return payload.imageUrl
+
+  if (payload.imageUrl) return payload.imageUrl
+
+  for (let attempt = 0; attempt < 36; attempt += 1) {
+    await new Promise((resolve) => window.setTimeout(resolve, 5_000))
+    const statusResponse = await fetch(
+      `/api/image-task-status?taskId=${encodeURIComponent(payload.taskId)}`,
+    )
+    const statusPayload = await readJson<ImageTaskResponse>(statusResponse)
+    if (!statusResponse.ok) {
+      throw new Error(statusPayload.error ?? '图片状态查询失败，请稍后重试。')
+    }
+
+    const status = statusPayload.status ?? 'UNKNOWN'
+    if (status === 'SUCCEEDED' && statusPayload.imageUrl) return statusPayload.imageUrl
+    if (['FAILED', 'CANCELED', 'UNKNOWN'].includes(status)) {
+      throw new Error(statusPayload.error ?? `图片生成${status === 'CANCELED' ? '已取消' : '失败'}。`)
+    }
+  }
+
+  throw new Error('图片生成等待超时。任务可能仍在后台运行，请稍后重试。')
 }
 
 export async function generateShotVideo(
