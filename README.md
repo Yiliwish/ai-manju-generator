@@ -38,3 +38,7 @@
 - 浏览器端 Canvas + MediaRecorder：将分镜画面和字幕录制为可下载的 WebM 预览片。
 
 万相视频需要百炼 WorkspaceId 和视频额度；视频生成通常需要等待数分钟，结果链接有效期有限。当前导出预览仍为 WebM，不是带服务端音轨的最终 MP4。
+
+## Vercel 免费部署
+
+项目已包含 `vercel.json`，可直接从 GitHub 导入。部署时在 Vercel 的环境变量中填写 `DEEPSEEK_API_KEY`、`DASHSCOPE_API_KEY` 和 `DASHSCOPE_WORKSPACE_ID`；其余模型与地域配置可沿用 `.env.example` 中的值。线上 API 由 `api/[...path].mjs` 提供，本地运行方式不变。

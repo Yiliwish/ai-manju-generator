@@ -1,6 +1,7 @@
 import http from 'node:http'
 import fs from 'node:fs'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 function loadEnvFile() {
   for (const filename of ['.env.local', '.env']) {
@@ -31,7 +32,7 @@ const VIDEO_REGION = DASHSCOPE_REGION.startsWith('cn-') ? DASHSCOPE_REGION : `cn
 const DASHSCOPE_VIDEO_BASE_URL = (process.env.DASHSCOPE_VIDEO_BASE_URL ?? (
   DASHSCOPE_WORKSPACE_ID ? `https://${DASHSCOPE_WORKSPACE_ID}.${VIDEO_REGION}.maas.aliyuncs.com` : ''
 )).replace(/\/$/, '')
-const DIST_DIR = path.resolve(process.cwd(), 'dist')
+const DIST_DIR = path.resolve(process.cwd(), process.env.DIST_DIR ?? 'dist-vite')
 const HOST = process.env.HOST ?? (process.env.PORT ? '0.0.0.0' : '127.0.0.1')
 
 const MIME_TYPES = {
@@ -121,6 +122,9 @@ function sendJson(res, status, payload) {
 }
 
 async function readBody(req) {
+  if (req.body && typeof req.body === 'object') return req.body
+  if (typeof req.body === 'string') return JSON.parse(req.body)
+
   const chunks = []
   let size = 0
   for await (const chunk of req) {
@@ -367,7 +371,7 @@ async function getShotVideoStatus(taskId) {
   }
 }
 
-const server = http.createServer(async (req, res) => {
+export async function handleRequest(req, res) {
   if (req.method === 'OPTIONS') {
     res.writeHead(204, { 'Access-Control-Allow-Origin': '*' })
     res.end()
@@ -493,8 +497,14 @@ const server = http.createServer(async (req, res) => {
     const message = error instanceof Error ? error.message : '生成失败，请稍后重试。'
     sendJson(res, 500, { error: message })
   }
-})
+}
 
-server.listen(PORT, HOST, () => {
-  console.log(`AI 漫剧 server listening on http://${HOST}:${PORT}`)
-})
+const isDirectRun = process.argv[1]
+  && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+
+if (isDirectRun) {
+  const server = http.createServer(handleRequest)
+  server.listen(PORT, HOST, () => {
+    console.log(`AI 漫剧 server listening on http://${HOST}:${PORT}`)
+  })
+}
