@@ -1,16 +1,26 @@
 import { useState } from 'react'
 import { FileText, Sparkles } from 'lucide-react'
 import StageHeader from '../components/StageHeader'
-import { exampleProject } from '../data/exampleProject'
-import { STAGES, type StageId } from '../stages'
+import { STAGES } from '../stages'
+import type { Project } from '../types'
 
 interface ImportStageProps {
-  onNavigate: (id: StageId) => void
+  project: Project
+  onGenerate: (source: string) => Promise<void>
+  isGenerating: boolean
+  error: string | null
 }
 
-export default function ImportStage({ onNavigate }: ImportStageProps) {
+export default function ImportStage({ project, onGenerate, isGenerating, error }: ImportStageProps) {
   const stage = STAGES.find((s) => s.id === 'import')!
-  const [text, setText] = useState(exampleProject.originalExcerpt)
+  const [text, setText] = useState(project.originalExcerpt)
+  const isWaitingForAnalysis =
+    text.trim().length >= 20 && text.trim() !== project.originalExcerpt.trim()
+  const metadata = {
+    title: isWaitingForAnalysis ? '待 AI 分析' : project.title,
+    source: isWaitingForAnalysis ? '待从文章识别' : project.source,
+    style: isWaitingForAnalysis ? '待根据文章分析' : project.style,
+  }
 
   return (
     <div className="flex h-full flex-col">
@@ -36,46 +46,64 @@ export default function ImportStage({ onNavigate }: ImportStageProps) {
               placeholder="粘贴小说章节，或输入原创故事……"
             />
             <p className="mt-2 text-xs text-zinc-500">
-              当前已载入示例项目《{exampleProject.title}》节选，可直接开始体验。
+              粘贴新文章后点击“开始生成”，标题、来源、画风、角色和分镜都会根据文章重新生成。
             </p>
           </section>
 
           {/* 项目信息 + 操作 */}
           <aside className="flex flex-col gap-4">
             <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
-              <h3 className="text-sm font-medium text-zinc-200">项目信息</h3>
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-sm font-medium text-zinc-200">项目信息</h3>
+                <span
+                  className={`rounded-full border px-2 py-0.5 text-[11px] ${
+                    isWaitingForAnalysis
+                      ? 'border-amber-500/30 bg-amber-500/10 text-amber-300'
+                      : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+                  }`}
+                >
+                  {isWaitingForAnalysis ? '待分析' : '已生成'}
+                </span>
+              </div>
               <dl className="mt-3 space-y-2.5 text-sm">
                 <div className="flex justify-between gap-3">
                   <dt className="shrink-0 text-zinc-500">标题</dt>
-                  <dd className="text-right text-zinc-200">{exampleProject.title}</dd>
+                  <dd className="text-right text-zinc-200">{metadata.title}</dd>
                 </div>
                 <div className="flex justify-between gap-3">
                   <dt className="shrink-0 text-zinc-500">来源</dt>
-                  <dd className="text-right text-zinc-200">{exampleProject.source}</dd>
+                  <dd className="text-right text-zinc-200">{metadata.source}</dd>
                 </div>
                 <div className="flex justify-between gap-3">
                   <dt className="shrink-0 text-zinc-500">画风</dt>
-                  <dd className="text-right text-zinc-200">{exampleProject.style}</dd>
+                  <dd className="text-right text-zinc-200">{metadata.style}</dd>
                 </div>
                 <div className="flex justify-between gap-3">
                   <dt className="shrink-0 text-zinc-500">格式</dt>
                   <dd className="text-right text-zinc-200 tabular-nums">
-                    {exampleProject.aspect} 竖屏
+                    {project.aspect} 竖屏
                   </dd>
                 </div>
               </dl>
             </div>
 
             <button
-              onClick={() => onNavigate('storyboard')}
-              className="flex items-center justify-center gap-2 rounded-lg bg-rose-500 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-rose-600"
+              onClick={() => void onGenerate(text)}
+              disabled={isGenerating || text.trim().length < 20}
+              className="flex items-center justify-center gap-2 rounded-lg bg-rose-500 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-rose-600 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Sparkles className="size-4" />
-              开始生成
+              {isGenerating ? '正在生成分镜…' : '开始生成'}
             </button>
-            <p className="text-center text-xs text-zinc-500">
-              AI 将把原文拆解为逐镜头分镜脚本
-            </p>
+            {error ? (
+              <p className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs leading-relaxed text-rose-300">
+                {error}
+              </p>
+            ) : (
+              <p className="text-center text-xs text-zinc-500">
+                AI 将把原文拆解为逐镜头分镜脚本
+              </p>
+            )}
           </aside>
         </div>
       </div>

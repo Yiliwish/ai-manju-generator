@@ -1,14 +1,11 @@
 import { Clock, LayoutGrid } from 'lucide-react'
 import StageHeader from '../components/StageHeader'
-import { exampleProject } from '../data/exampleProject'
 import { STAGES } from '../stages'
-import type { ShotType } from '../types'
+import type { Project, ShotType } from '../types'
 
-const sceneName = (id: string) =>
-  exampleProject.scenes.find((s) => s.id === id)?.name ?? id
-
-const charName = (id: string) =>
-  exampleProject.characters.find((c) => c.id === id)?.name ?? id
+interface StoryboardStageProps {
+  project: Project
+}
 
 const typeBadge: Record<ShotType, string> = {
   对白: 'bg-sky-500/15 text-sky-400',
@@ -17,9 +14,11 @@ const typeBadge: Record<ShotType, string> = {
   空镜: 'bg-zinc-500/15 text-zinc-400',
 }
 
-export default function StoryboardStage() {
+export default function StoryboardStage({ project }: StoryboardStageProps) {
   const stage = STAGES.find((s) => s.id === 'storyboard')!
-  const total = exampleProject.shots.reduce((sum, s) => sum + s.duration, 0)
+  const total = project.shots.reduce((sum, s) => sum + s.duration, 0)
+  const sceneName = (id: string) => project.scenes.find((s) => s.id === id)?.name ?? id
+  const charName = (id: string) => project.characters.find((c) => c.id === id)?.name ?? id
 
   return (
     <div className="flex h-full flex-col">
@@ -31,7 +30,7 @@ export default function StoryboardStage() {
           <div className="mb-6 flex flex-wrap items-center gap-4 rounded-xl border border-zinc-800 bg-zinc-900 px-5 py-4">
             <span className="flex items-center gap-2 text-sm text-zinc-300">
               <LayoutGrid className="size-4 text-zinc-500" />
-              <span className="font-medium tabular-nums">{exampleProject.shots.length}</span>
+              <span className="font-medium tabular-nums">{project.shots.length}</span>
               镜
             </span>
             <span className="flex items-center gap-2 text-sm text-zinc-300">
@@ -45,7 +44,7 @@ export default function StoryboardStage() {
 
           {/* 镜头列表 */}
           <ol className="space-y-3">
-            {exampleProject.shots.map((shot) => (
+            {project.shots.map((shot) => (
               <li
                 key={shot.id}
                 className="group rounded-xl border border-zinc-800 bg-zinc-900 p-4 transition-colors hover:border-zinc-700"

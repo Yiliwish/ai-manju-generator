@@ -1,16 +1,30 @@
 import { useState } from 'react'
-import { Check, Layers, X } from 'lucide-react'
+import { Check, ImagePlus, Layers, LoaderCircle, X } from 'lucide-react'
 import StageHeader from '../components/StageHeader'
 import ImageSlot from '../components/ImageSlot'
 import RoomSchematic from '../components/RoomSchematic'
-import { exampleProject } from '../data/exampleProject'
 import { STAGES } from '../stages'
+import type { Project } from '../types'
 
-export default function SceneStage() {
+interface SceneStageProps {
+  project: Project
+  onGenerateImage: (sceneId: string) => Promise<void>
+  generatingSceneId: string | null
+  error: string | null
+}
+
+export default function SceneStage({
+  project,
+  onGenerateImage,
+  generatingSceneId,
+  error,
+}: SceneStageProps) {
   const stage = STAGES.find((s) => s.id === 'scene')!
-  const [sceneId, setSceneId] = useState(exampleProject.scenes[0].id)
-  const scene = exampleProject.scenes.find((s) => s.id === sceneId)!
-  const derivedShots = exampleProject.shots.filter((s) => s.sceneId === sceneId)
+  const [sceneId, setSceneId] = useState(project.scenes[0]?.id ?? '')
+  const scene = project.scenes.find((s) => s.id === sceneId) ?? project.scenes[0]
+  const derivedShots = project.shots.filter((s) => s.sceneId === scene?.id)
+
+  if (!scene) return null
 
   return (
     <div className="flex h-full flex-col">
@@ -28,11 +42,16 @@ export default function SceneStage() {
                 锁构图），不再从零重写 —— 根治跨镜头「场景空间漂移」。
               </p>
             </div>
+            {error && (
+              <p className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs leading-relaxed text-rose-300">
+                {error}
+              </p>
+            )}
           </div>
 
           {/* 场景切换 */}
           <div className="flex flex-wrap gap-2">
-            {exampleProject.scenes.map((s) => (
+            {project.scenes.map((s) => (
               <button
                 key={s.id}
                 onClick={() => setSceneId(s.id)}
@@ -56,8 +75,27 @@ export default function SceneStage() {
 
           {/* 选中场景详情 */}
           <div className="grid gap-5 lg:grid-cols-[280px_1fr]">
-            <div className="aspect-[3/4] overflow-hidden rounded-xl border border-zinc-800">
-              <ImageSlot src={scene.masterPlate} label="空场景母本图" />
+            <div className="space-y-3">
+              <div className="aspect-[9/16] overflow-hidden rounded-xl border border-zinc-800">
+                <ImageSlot src={scene.masterPlate} label="空场景母本图" />
+              </div>
+              <button
+                type="button"
+                onClick={() => void onGenerateImage(scene.id)}
+                disabled={generatingSceneId !== null}
+                className="flex w-full items-center justify-center gap-2 rounded-lg border border-rose-500/40 px-3 py-2.5 text-xs font-medium text-rose-300 transition-colors hover:bg-rose-500/10 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {generatingSceneId === scene.id ? (
+                  <LoaderCircle className="size-3.5 animate-spin" />
+                ) : (
+                  <ImagePlus className="size-3.5" />
+                )}
+                {generatingSceneId === scene.id
+                  ? '正在生成母本…'
+                  : scene.masterPlate
+                    ? '重新生成场景母本'
+                    : '生成场景母本'}
+              </button>
             </div>
 
             <div className="space-y-4">

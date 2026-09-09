@@ -6,7 +6,7 @@ interface ImageSlotProps {
   className?: string
 }
 
-/** 图片占位槽：有图显示图，无图显示「即梦生成中」占位 */
+/** 图片展示槽：有图显示图，无图显示等待生成状态 */
 export default function ImageSlot({ src, label, className = '' }: ImageSlotProps) {
   if (src) {
     return <img src={src} alt={label ?? ''} className={`h-full w-full object-cover ${className}`} />
@@ -17,7 +17,7 @@ export default function ImageSlot({ src, label, className = '' }: ImageSlotProps
     >
       <div className="flex flex-col items-center gap-1.5 px-3 text-center text-zinc-600">
         <ImageIcon className="size-6" />
-        <span className="text-xs">{label ?? '即梦生成中'}</span>
+        <span className="text-xs">{label ?? '等待生成'}</span>
       </div>
     </div>
   )

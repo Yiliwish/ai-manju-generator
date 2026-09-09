@@ -4,7 +4,6 @@ import {
   Users,
   Image as ImageIcon,
   Clapperboard,
-  Mic,
   Download,
   type LucideIcon,
 } from 'lucide-react'
@@ -15,7 +14,6 @@ export type StageId =
   | 'character'
   | 'scene'
   | 'shot'
-  | 'voice'
   | 'export'
 
 export interface Stage {
@@ -76,16 +74,8 @@ export const STAGES: Stage[] = [
     icon: Clapperboard,
   },
   {
-    id: 'voice',
-    index: 6,
-    name: '配音动效',
-    pipeline: 'TTS 配音',
-    subtitle: '多角色音色 + 运镜动效',
-    icon: Mic,
-  },
-  {
     id: 'export',
-    index: 7,
+    index: 6,
     name: '字幕成片',
     pipeline: '字幕 + 合成',
     subtitle: '字幕校对、竖屏预览与导出',

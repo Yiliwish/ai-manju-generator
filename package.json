@@ -6,6 +6,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "api": "node server/api.mjs",
+    "start": "node server/api.mjs",
     "build": "tsc && vite build",
     "preview": "vite preview"
   },

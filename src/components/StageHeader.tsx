@@ -1,4 +1,4 @@
-import type { Stage } from '../stages'
+import { STAGES, type Stage } from '../stages'
 
 interface StageHeaderProps {
   stage: Stage
@@ -8,7 +8,9 @@ export default function StageHeader({ stage }: StageHeaderProps) {
   return (
     <header className="border-b border-zinc-800 px-8 py-5">
       <div className="flex items-baseline gap-3">
-        <span className="text-sm font-medium text-rose-400 tabular-nums">{stage.index} / 7</span>
+        <span className="text-sm font-medium text-rose-400 tabular-nums">
+          {stage.index} / {STAGES.length}
+        </span>
         <h2 className="text-xl font-semibold text-balance text-zinc-100">{stage.name}</h2>
         <span className="rounded-full border border-zinc-800 px-2 py-0.5 text-xs text-zinc-500">
           {stage.pipeline}
